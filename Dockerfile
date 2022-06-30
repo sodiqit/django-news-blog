@@ -3,7 +3,7 @@ FROM python:3.10-alpine
 ENV LISTEN_PORT=8000
 EXPOSE 8000
 
-WORKDIR /app/server
+WORKDIR /app
 
 RUN pip3 install --upgrade pip
 
@@ -13,6 +13,6 @@ RUN apk add --no-cache jpeg-dev zlib-dev
 RUN apk add --no-cache --virtual .build-deps build-base linux-headers \
     && pip install Pillow
 
-COPY server/requirements.txt ./
+COPY server/requirements.txt ./server/
 
-RUN python3 -m pip install -r requirements.txt
+RUN python3 -m pip install -r ./server/requirements.txt && python3 -m pip install psycopg2-binary
