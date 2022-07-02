@@ -20,6 +20,9 @@ class Category(models.Model):
         self.category_id = f"{ids}.{self.id}" if len(depend_ids) > 0 else f"{self.id}"
         super().save(update_fields=["category_id"])
 
+    def __str__(self) -> str:
+        return f"{self.category_id} - {self.title}"
+
 
 class Tag(models.Model):
     title = models.CharField(max_length=128)
