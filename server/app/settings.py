@@ -30,6 +30,7 @@ class BaseConfiguration(Configuration):
         "app.apps.core",
         "app.apps.posts",
         "configurations",
+        "rest_framework",
         "django.contrib.admin",
         "django.contrib.auth",
         "django.contrib.contenttypes",
