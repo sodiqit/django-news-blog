@@ -9,7 +9,7 @@ def group_by_id(prev: list, current: Category):
     """
     parent_category_id = current.category_id[0]
     try:
-        group: list | None = list(
+        group: list = list(
             filter(
                 lambda x: len(
                     list(

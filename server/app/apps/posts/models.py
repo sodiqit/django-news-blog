@@ -15,9 +15,8 @@ class Post(models.Model):
     tags = models.ManyToManyField(Tag)
     created_date = models.DateField(auto_now_add=True)
 
-
     def __str__(self):
         return self.title
-    
+
     class Meta:
         ordering = ['-created_date']
