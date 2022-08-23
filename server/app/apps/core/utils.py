@@ -92,6 +92,10 @@ def group_by_parent_category(group: list[Category], item: Category | None = None
             item = group[0]
         except KeyError:
             return
+
+    if item is None:
+        return
+
     parent_id = item.id
     related_items = list(filter(find_related_item(parent_id), group))
 

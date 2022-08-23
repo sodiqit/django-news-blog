@@ -36,7 +36,7 @@ class Tag(models.Model):
 
 
 class User(AbstractUser):
-    first_name = models.TextField()
-    last_name = models.TextField()
+    first_name = models.CharField(default=None)
+    last_name = models.CharField(default=None)
     avatar = models.ImageField(upload_to=get_upload_path, null=True, blank=True)
     banned = models.BooleanField(default=False)

@@ -16,7 +16,7 @@ class PostTestCase(TestCase):
 
     def test_get_all_posts(self):
         response: Response = self.client.get('/api/v1/posts/')
-        data = response.json()
+        data = response.json() # type: ignore
 
         self.assertEqual(data[0]['title'], 'Test title')
         self.assertEqual(response.status_code, 200)
