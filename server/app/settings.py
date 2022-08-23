@@ -22,16 +22,29 @@ class BaseConfiguration(Configuration):
     # Quick-start development settings - unsuitable for production
     # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
 
-    ALLOWED_HOSTS: list[str] = []
+    ALLOWED_HOSTS: list[str] = ['localhost']
 
     # Application definition
 
     INSTALLED_APPS = [
         "app.apps.core",
         "app.apps.posts",
+
+        "allauth",
+        "allauth.account",
+        "allauth.socialaccount",
+        "allauth.socialaccount.providers.google",
+
+        "dj_rest_auth",
+        "dj_rest_auth.registration",
+
+        "corsheaders",
+
         "configurations",
         "rest_framework",
+        "rest_framework.authtoken",
         "django.contrib.admin",
+        "django.contrib.sites",
         "django.contrib.auth",
         "django.contrib.contenttypes",
         "django.contrib.sessions",
@@ -47,6 +60,7 @@ class BaseConfiguration(Configuration):
         "django.contrib.auth.middleware.AuthenticationMiddleware",
         "django.contrib.messages.middleware.MessageMiddleware",
         "django.middleware.clickjacking.XFrameOptionsMiddleware",
+        "corsheaders.middleware.CorsMiddleware",
     ]
 
     ROOT_URLCONF = "app.urls"
@@ -87,6 +101,20 @@ class BaseConfiguration(Configuration):
         },
     ]
 
+    SOCIALACCOUNT_PROVIDERS = {
+        "google": {
+            "SCOPE": [
+                "profile",
+                "email",
+            ],
+            "AUTH_PARAMS": {
+                "access_type": "online",
+            }
+        }
+    }
+
+    SITE_ID = 1
+
     # Internationalization
     # https://docs.djangoproject.com/en/4.0/topics/i18n/
 
@@ -113,12 +141,23 @@ class BaseConfiguration(Configuration):
 
     DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+    REST_FRAMEWORK = {
+        'DEFAULT_AUTHENTICATION_CLASSES': (
+            'rest_framework.authentication.TokenAuthentication',
+            'django.contrib.auth.backends.ModelBackend'
+        ),
+        'DEFAULT_PERMISSION_CLASSES': (
+            'rest_framework.permissions.IsAuthenticated', )
+    }
+
 
 class EnvConfig(BaseConfiguration):
     if os.environ.get("DEBUG", False) == "True":
         DEBUG = True
     else:
         DEBUG = False
+    CORS_ORIGIN_ALLOW_ALL = DEBUG
+    GOOGLE_REDIRECT_URI = os.getenv('GOOGLE_REDIRECT_URI', '')
     SECRET_KEY = os.environ.get("SECRET_KEY", "")
     DB_NAME = os.environ.get("DB_NAME", "")
     DB_USER = os.environ.get("DB_USER", "")

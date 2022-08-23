@@ -22,11 +22,14 @@ from django.conf.urls.static import static
 from rest_framework import routers
 
 from app.apps.posts.views import PostView
+from app.apps.core.views import GoogleLogin
 
 router = routers.DefaultRouter()
 router.register(r'posts', PostView)
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("api/v1/auth/", include("dj_rest_auth.urls")),
+    path("api/v1/social-auth/google/", GoogleLogin.as_view(), name="google_login"),
     path("api/v1/", include(router.urls)),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
