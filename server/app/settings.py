@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 
+from datetime import timedelta
 from pathlib import Path
 import os
 from configurations import Configuration
@@ -43,6 +44,7 @@ class BaseConfiguration(Configuration):
         "configurations",
         "rest_framework",
         "rest_framework.authtoken",
+        "rest_framework_simplejwt.token_blacklist",
         "django.contrib.admin",
         "django.contrib.sites",
         "django.contrib.auth",
@@ -132,8 +134,6 @@ class BaseConfiguration(Configuration):
     STATIC_URL = "static/"
 
     MEDIA_URL = "/media/"
-
-    MEDIA_URL = "/media/"
     MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
     # Default primary key field type
@@ -141,10 +141,24 @@ class BaseConfiguration(Configuration):
 
     DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+    ACCESS_TOKEN_LIFETIME = int(os.environ.get('ACCESS_TOKEN_LIFETIME', '5'))
+    REFRESH_TOKEN_LIFETIME = int(os.environ.get('ACCESS_TOKEN_LIFETIME', '7'))
+
+    SIMPLE_JWT = {
+        'ACCESS_TOKEN_LIFETIME': timedelta(minutes=ACCESS_TOKEN_LIFETIME),
+        'REFRESH_TOKEN_LIFETIME': timedelta(days=REFRESH_TOKEN_LIFETIME),
+        'ROTATE_REFRESH_TOKENS': True,
+        'BLACKLIST_AFTER_ROTATION': True,
+        'UPDATE_LAST_LOGIN': True,
+    }
+
+    REST_USE_JWT = True
+
     REST_FRAMEWORK = {
         'DEFAULT_AUTHENTICATION_CLASSES': (
             'rest_framework.authentication.TokenAuthentication',
-            'django.contrib.auth.backends.ModelBackend'
+            'django.contrib.auth.backends.ModelBackend',
+            'dj_rest_auth.jwt_auth.JWTCookieAuthentication',
         ),
         'DEFAULT_PERMISSION_CLASSES': (
             'rest_framework.permissions.IsAuthenticated', )
