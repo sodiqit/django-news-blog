@@ -1,4 +1,4 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, mixins
 from rest_framework.permissions import IsAuthenticated, SAFE_METHODS, BasePermission
 
 from .serializers import PostSerializer
@@ -15,7 +15,7 @@ class IsOwnerOrReadOnly(BasePermission):
         return obj.author == request.user
 
 
-class PostView(viewsets.ModelViewSet):
+class PostView(mixins.UpdateModelMixin, mixins.DestroyModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
     permission_classes = (IsAuthenticated, IsOwnerOrReadOnly)
     queryset = Post.objects.all()
     serializer_class = PostSerializer
