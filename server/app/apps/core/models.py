@@ -40,3 +40,9 @@ class User(AbstractUser):
     last_name = models.CharField(max_length=250, default=None)
     avatar = models.ImageField(upload_to=get_upload_path, null=True, blank=True)
     banned = models.BooleanField(default=False)
+
+class Author(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, primary_key=True)
+
+    def __str__(self):
+        return self.user.__str__()
