@@ -1,5 +1,6 @@
 import os
 from django.db import models
+from django.forms import ImageField
 from app.apps.core.models import Author, Category, Tag
 
 # Create your models here.
@@ -31,6 +32,9 @@ class PostDraft(models.Model):
         'Post', related_name="+", on_delete=models.CASCADE)
     moderate_status = models.TextField(choices=MODERATE_STATUSES.choices)
 
+    def __str__(self):
+        return self.post.__str__()
+
 
 class Post(models.Model):
     title = models.CharField(max_length=150, default='')
@@ -46,11 +50,17 @@ class Post(models.Model):
         PostDraft, related_name="+", on_delete=models.CASCADE, blank=True, null=True)
 
     def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        draft = PostDraft(post=self, moderate_status=MODERATE_STATUSES.PENDING)
-        draft.save()
-        self.draft = draft
-        super().save(update_fields=["draft"])
+        if self.id is None:
+            saved_preview: ImageField = self.preview #type: ignore
+            self.preview = None
+            super().save(*args, **kwargs)
+            self.preview = saved_preview
+            draft = PostDraft(post=self, moderate_status=MODERATE_STATUSES.PENDING)
+            draft.save()
+            self.draft = draft
+            super().save(update_fields=['draft', 'preview'])
+        else: 
+            super().save(*args, **kwargs)
 
     def __str__(self):
         return self.title
