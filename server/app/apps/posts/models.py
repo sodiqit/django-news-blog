@@ -31,10 +31,10 @@ class PostDraft(models.Model):
     post = models.OneToOneField(
         'Post', related_name="+", on_delete=models.CASCADE)
     moderate_status = models.TextField(choices=MODERATE_STATUSES.choices)
+    message = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return self.post.__str__()
-
 
 class Post(models.Model):
     title = models.CharField(max_length=150, default='')
