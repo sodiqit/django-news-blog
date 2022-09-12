@@ -1,73 +1,103 @@
 from dataclasses import dataclass
-from rest_framework import viewsets, serializers
+from rest_framework import viewsets, mixins, status
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, SAFE_METHODS, BasePermission
+from rest_framework.permissions import IsAuthenticated
 
-from app.apps.core.converter import CategoryConverter
-from app.apps.core.models import Category
+from app.apps.core.models import Author
 from app.injector import inject
 from app.fp import pipe
 from app.apps.core.filter import QueryFilter
-from django.db.models import QuerySet
 
 from app.apps.core.sort import Sort
+from .permissions import IsOwnerOrReadOnly, IsOwner
 
-from .serializers import PostSerializer
-from .models import MODERATE_STATUSES, Post
+from .serializers import CreatePostSerializer, PostDraftSerializer, PostSerializer, UpdatePostSerializer
+from .models import MODERATE_STATUSES, Post, PostDraft
 
 # Create your views here.
-
-
-class IsOwnerOrReadOnly(BasePermission):
-    def has_object_permission(self, request, view, obj):
-        if request.method in SAFE_METHODS:
-            return True
-
-        return obj.author.user == request.user
 
 
 @dataclass
 class PostViewContainer:
     query_filter: QueryFilter
     sort: Sort
-    category_converter: CategoryConverter
 
 
-class PostView(viewsets.ModelViewSet):
+class PostDraftView(mixins.DestroyModelMixin,
+                    mixins.UpdateModelMixin,
+                    mixins.RetrieveModelMixin,
+                    mixins.ListModelMixin,
+                    viewsets.GenericViewSet):
+    permission_classes = (IsAuthenticated, IsOwner)
+    queryset = PostDraft.objects.all()
+    serializer_class = PostDraftSerializer
+
+    @inject('PostView', QueryFilter)
+    def __init__(self, **kwargs) -> None:
+        self.container: PostViewContainer = kwargs.pop('container')
+        self.query_filter = self.container.query_filter
+        self.query_filter.fields = ['moderate_status']
+        super().__init__(**kwargs)
+
+    def get_queryset(self):
+        queryset = PostDraft.objects.filter(
+            post__author__user=self.request.user)  # type:ignore
+        return self.query_filter.filter_by_fields(queryset, self.request)
+
+    def update(self, request, *args, **kwargs):
+        instance: PostDraft = self.get_object()
+
+        if instance.moderate_status == MODERATE_STATUSES.DECLINED:
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={'detail': 'post is declined'})
+
+        post_data: dict | None = request.data.pop('post', None)
+
+        post_serializer = UpdatePostSerializer(instance.post, data=post_data)
+        post_serializer.is_valid(raise_exception=True)
+        post_serializer.save()
+
+        serializer = self.get_serializer(instance)
+
+        return Response(serializer.data)
+
+
+class PostView(mixins.DestroyModelMixin,
+               mixins.ListModelMixin,
+               mixins.CreateModelMixin,
+               mixins.RetrieveModelMixin,
+               viewsets.GenericViewSet):
     permission_classes = (IsAuthenticated, IsOwnerOrReadOnly)
     queryset = Post.objects.filter(
         draft__moderate_status=MODERATE_STATUSES.APPROVED)
     serializer_class = PostSerializer
 
-    @inject('PostView', QueryFilter, Sort, CategoryConverter)
+    @inject('PostView', QueryFilter, Sort)
     def __init__(self, **kwargs) -> None:
         self.container: PostViewContainer = kwargs.pop('container')
         self.query_filter = self.container.query_filter
         self.query_filter.fields = [
             'id', 'title', 'author', 'categories', 'tags', 'created_date']
         self.sort = self.container.sort
-        self.sort.fields = ['id', 'categories', 'images']
+        self.sort.fields = ['id', 'images', 'created_date']
         super().__init__(**kwargs)
 
-    def list(self, request):
-        queryset: QuerySet = pipe(self.get_queryset(), self.filter_queryset,
-                                  self.query_filter.filter_by_fields(request=request), self.sort.sort_by_fields(request=request))
+    def get_queryset(self):
+        return pipe(super().get_queryset(), self.query_filter.filter_by_fields(request=self.request), self.sort.sort_by_fields(request=self.request))
 
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(self._add_categories_tree(serializer))
+    def create(self, request):
+        if not Author.objects.filter(user=request.user).exists():
+            return Response({'detail': 'author not exist'}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = CreatePostSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save(user=request.user)
 
-        result = pipe(self.get_serializer(queryset, many=True),
-                      self._add_categories_tree)
-        return Response(result)
+        data = PostSerializer(instance).data
 
-    def _add_categories_tree(self, serializer: serializers.BaseSerializer):
-        for post in serializer.data:
-            categories = [Category.objects.get(
-                id=c['id']) for c in post['categories']]
-            category_tree = self.container.category_converter.convert_categories_to_tree(
-                categories)
-            post['categories'] = category_tree
+        headers = self.get_success_headers(data)
+        return Response(data, status=status.HTTP_201_CREATED, headers=headers)
 
-        return serializer.data
+    def destroy(self, request, pk):
+        instance = Post.objects.get(pk=pk)
+        self.check_object_permissions(self.request, instance)
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)

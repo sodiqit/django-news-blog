@@ -44,9 +44,9 @@ def inject(name: str, *args, without_instance: bool = False):
             else:
                 container.add_dependency(dep)
 
-        def inner1(self, **kwargs):
+        def inner1(self, *args, **kwargs):
             new_args = {**kwargs, 'container': container}
-            fn(self, **new_args)
+            fn(self, *args, **new_args)
 
         return inner1
 

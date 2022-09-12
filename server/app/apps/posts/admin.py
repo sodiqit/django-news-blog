@@ -1,6 +1,7 @@
 import os
 import shutil
 from django import forms
+from django.conf import settings
 from django.contrib import admin
 from django.http import HttpRequest
 from django.urls import reverse
@@ -18,7 +19,7 @@ class PostImageAdmin(admin.TabularInline):
     form = PostImageForm
 
 class PostAdmin(admin.ModelAdmin):
-    list_display = ['id', 'title', 'short_description', 'author', 'preview', 'get_categories', 'get_tags', 'created_date']
+    list_display = ['id', 'title', 'short_description', 'author_link', 'preview', 'get_categories', 'get_tags', 'created_date']
     readonly_fields = ['draft']
     list_display_links = ['id', 'title']
     search_fields = ['title', 'content']
@@ -26,12 +27,14 @@ class PostAdmin(admin.ModelAdmin):
     exclude = ['images']
 
     def delete_model(self, request, obj):
-        shutil.rmtree(os.path.abspath(f'server/media/posts/post_{obj.id}'))
+        if os.path.exists(os.path.abspath(f'{settings.MEDIA_ROOT}/posts/post_{obj.id}')):
+            shutil.rmtree(os.path.abspath(f'{settings.MEDIA_ROOT}/posts/post_{obj.id}'))
         super().delete_model(request=request, obj=obj)
 
     def delete_queryset(self, request: HttpRequest, queryset: QuerySet) -> None:
         for post in queryset:
-            shutil.rmtree(os.path.abspath(f'server/media/posts/post_{post.id}'))
+            if os.path.exists(os.path.abspath(f'{settings.MEDIA_ROOT}/posts/post_{post.id}')):
+                shutil.rmtree(os.path.abspath(f'{settings.MEDIA_ROOT}/posts/post_{post.id}'))
         return super().delete_queryset(request, queryset)
 
     def get_categories(self, obj: Post):
@@ -43,6 +46,13 @@ class PostAdmin(admin.ModelAdmin):
         return ', '.join([f'{c.title}' for c in obj.tags.all()])
 
     get_tags.short_description = 'Tags' #type: ignore
+
+    def author_link(self, post: Post):
+        url = reverse("admin:core_user_change", args=[post.author.user.id])
+        link = f'<a href="{url}">{post.author}</a>'
+        return mark_safe(link)
+
+    author_link.short_description = 'Author' #type: ignore
 
 class PostDraftAdmin(admin.ModelAdmin):
     list_display = ['id', 'post_link']

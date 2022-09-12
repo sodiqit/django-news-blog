@@ -3,6 +3,7 @@ from rest_framework.request import Request
 
 from app.fp import curry
 
+
 class Sort:
     def __init__(self) -> None:
         self._fields: list[str] = []
@@ -12,15 +13,18 @@ class Sort:
         sort = request.query_params.get('sort')
         if sort is None:
             return queryset
-        
+
         sort_obj = self._parse_sort_obj(sort)
 
-        params = [self._parse_param(name, value) if self._is_valid(name, value) else None for name, value in sort_obj.items()]
+        params = [self._parse_param(name, value) if self._is_valid(
+            name, value) else None for name, value in sort_obj.items()]
 
-        filtered_params: list[str] = list(filter(lambda x: x is not None, params))
-        if len(params) == 0:
+        filtered_params: list[str] = list(
+            filter(lambda x: x is not None, params))
+
+        if len(filtered_params) == 0:
             return queryset
-    
+
         return queryset.order_by(*filtered_params)
 
     '''Define which query fields must be support in sorting'''
@@ -47,4 +51,3 @@ class Sort:
 
     def _parse_param(self, name: str, value: str | list[object]):
         return name if value == 'asc' else f'-{name}'
-            

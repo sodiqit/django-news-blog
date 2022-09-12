@@ -23,7 +23,7 @@ from django.conf import settings
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 
-from app.apps.posts.views import PostView
+from app.apps.posts.views import PostDraftView, PostView
 from app.apps.core.views import GoogleLogin
 
 schema_view = get_schema_view(
@@ -39,6 +39,7 @@ schema_view = get_schema_view(
 
 router = routers.DefaultRouter()
 router.register(r'posts', PostView)
+router.register(r'drafts', PostDraftView)
 
 urlpatterns = [
     path("admin/", admin.site.urls),
