@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Dict, TypedDict
 from rest_framework import serializers
 from drf_extra_fields.fields import Base64ImageField
+from rest_framework.request import Request
 
 from app.apps.core.serializers import CategorySerializer, TagSerializer
 from app.apps.core.models import Author, Category, User
@@ -9,8 +10,9 @@ from app.injector import inject
 from app.fp import pipe
 from app.apps.core.converter import CategoryConverter
 from app.utils import omit
+from .exceptions import InvalidContext
 from .services import PostService
-from .models import MODERATE_STATUSES, Post, PostDraft, PostImage
+from .models import MODERATE_STATUSES, Post, PostComment, PostDraft, PostImage
 
 
 class ImageListField(serializers.ListField):
@@ -142,3 +144,41 @@ class PostDraftSerializer(serializers.ModelSerializer):
     class Meta:
         model = PostDraft
         fields = ('id', 'post', 'message', 'moderate_status')
+
+
+class CommentUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('id', 'email')
+
+
+class CommentPostSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Post
+        fields = ('id', 'title')
+
+
+class PostCommentSerializer(serializers.ModelSerializer):
+    user = CommentUserSerializer()
+    post = CommentPostSerializer()
+
+    class Meta:
+        model = PostComment
+        fields = ('id', 'post', 'user', 'text', 'created_at')
+
+
+class CreateCommentSerializer(serializers.Serializer):
+    text = serializers.CharField()
+
+    def create(self, validated_data: dict):
+        request: Request | None = self.context.get('request')
+        post_id: int | None = self.context.get('post_id')
+
+        if not request or not post_id:
+            raise InvalidContext
+
+        instance = PostComment.objects.create(
+            **{**validated_data, 'user': request.user, 'post': Post.objects.get(id=post_id)})
+
+        return instance
+

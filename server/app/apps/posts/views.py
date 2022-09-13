@@ -11,8 +11,8 @@ from app.apps.core.filter import QueryFilter
 from app.apps.core.sort import Sort
 from .permissions import IsOwnerOrReadOnly, IsOwner
 
-from .serializers import CreatePostSerializer, PostDraftSerializer, PostSerializer, UpdatePostSerializer
-from .models import MODERATE_STATUSES, Post, PostDraft
+from .serializers import CreateCommentSerializer, CreatePostSerializer, PostCommentSerializer, PostDraftSerializer, PostSerializer, UpdatePostSerializer
+from .models import MODERATE_STATUSES, Post, PostComment, PostDraft
 
 # Create your views here.
 
@@ -101,3 +101,41 @@ class PostView(mixins.DestroyModelMixin,
         self.check_object_permissions(self.request, instance)
         self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class PostCommentView(mixins.DestroyModelMixin,
+                      mixins.ListModelMixin,
+                      mixins.CreateModelMixin,
+                      mixins.RetrieveModelMixin,
+                      viewsets.GenericViewSet):
+    permission_classes = (IsAuthenticated, )
+    serializer_class = PostCommentSerializer
+    lookup_url_kwarg = 'post_id'
+
+    @inject('PostView', QueryFilter, Sort)
+    def __init__(self, **kwargs) -> None:
+        self.container: PostViewContainer = kwargs.pop('container')
+        self.query_filter = self.container.query_filter
+        self.query_filter.fields = ['id', 'text', 'user', 'created_at']
+        self.sort = self.container.sort
+        self.sort.fields = ['id', 'text', 'created_at']
+        super().__init__(**kwargs)
+
+    def get_queryset(self):
+        queryset = PostComment.objects.filter(
+            post__draft__moderate_status=MODERATE_STATUSES.APPROVED, post__id=self.kwargs.get(self.lookup_url_kwarg))
+
+        return pipe(queryset, self.query_filter.filter_by_fields(
+            request=self.request), self.sort.sort_by_fields(request=self.request))
+
+    def create(self, request, post_id):
+        if len(self.get_queryset()) == 0:
+            return Response({'detail': 'post not found'}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = CreateCommentSerializer(data=request.data, context={'request': request, 'post_id': post_id})
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+
+        data = PostCommentSerializer(instance).data
+
+        headers = self.get_success_headers(data)
+        return Response(data, status=status.HTTP_201_CREATED, headers=headers)

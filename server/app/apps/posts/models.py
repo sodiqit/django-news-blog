@@ -3,7 +3,7 @@ import shutil
 from django.conf import settings
 from django.db import models
 from django.forms import ImageField
-from app.apps.core.models import Author, Category, Tag
+from app.apps.core.models import Author, Category, Tag, User
 
 # Create your models here.
 
@@ -82,7 +82,13 @@ class Post(models.Model):
 
 
     def __str__(self):
-        return self.title
+        return f'#{self.id} {self.title}'
 
     class Meta:
         ordering = ['-created_date']
+
+class PostComment(models.Model):
+    text = models.TextField()
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    post = models.ForeignKey(Post, related_name="comments", on_delete=models.CASCADE)
+    created_at = models.DateField(auto_now_add=True)

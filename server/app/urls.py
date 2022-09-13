@@ -23,7 +23,7 @@ from django.conf import settings
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 
-from app.apps.posts.views import PostDraftView, PostView
+from app.apps.posts.views import PostCommentView, PostDraftView, PostView
 from app.apps.core.views import GoogleLogin
 
 schema_view = get_schema_view(
@@ -46,6 +46,7 @@ urlpatterns = [
     path("api/v1/auth/", include("dj_rest_auth.urls")),
     path("api/v1/social-auth/google/",
          GoogleLogin.as_view(), name="google_login"),
+    path("api/v1/posts/<int:post_id>/comments/", PostCommentView.as_view({ 'get': 'list', 'post': 'create' }), name='comments'),
     path("api/v1/", include(router.urls)),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
