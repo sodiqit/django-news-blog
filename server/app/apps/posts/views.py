@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from rest_framework import viewsets, mixins, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from drf_yasg.utils import swagger_auto_schema
 
 from app.apps.core.models import Author
 from app.injector import inject
@@ -11,7 +12,7 @@ from app.apps.core.filter import QueryFilter
 from app.apps.core.sort import Sort
 from .permissions import IsOwnerOrReadOnly, IsOwner
 
-from .serializers import CreateCommentSerializer, CreatePostSerializer, PostCommentSerializer, PostDraftSerializer, PostSerializer, UpdatePostSerializer
+from .serializers import CreateCommentSerializer, CreatePostSerializer, PostCommentSerializer, PostDraftSerializer, PostSerializer, SwaggerPostDraftSerializer, SwaggerPostSerializer, UpdatePostSerializer
 from .models import MODERATE_STATUSES, Post, PostComment, PostDraft
 
 # Create your views here.
@@ -44,6 +45,7 @@ class PostDraftView(mixins.DestroyModelMixin,
             post__author__user=self.request.user)  # type:ignore
         return self.query_filter.filter_by_fields(queryset, self.request)
 
+    @swagger_auto_schema(responses={200: SwaggerPostDraftSerializer})
     def update(self, request, *args, **kwargs):
         instance: PostDraft = self.get_object()
 
@@ -84,6 +86,7 @@ class PostView(mixins.DestroyModelMixin,
     def get_queryset(self):
         return pipe(super().get_queryset(), self.query_filter.filter_by_fields(request=self.request), self.sort.sort_by_fields(request=self.request))
 
+    @swagger_auto_schema(responses={200: SwaggerPostSerializer})
     def create(self, request):
         if not Author.objects.filter(user=request.user).exists():
             return Response({'detail': 'author not exist'}, status=status.HTTP_400_BAD_REQUEST)
@@ -103,8 +106,7 @@ class PostView(mixins.DestroyModelMixin,
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class PostCommentView(mixins.DestroyModelMixin,
-                      mixins.ListModelMixin,
+class PostCommentView(mixins.ListModelMixin,
                       mixins.CreateModelMixin,
                       mixins.RetrieveModelMixin,
                       viewsets.GenericViewSet):
@@ -122,8 +124,12 @@ class PostCommentView(mixins.DestroyModelMixin,
         super().__init__(**kwargs)
 
     def get_queryset(self):
-        queryset = PostComment.objects.filter(
-            post__draft__moderate_status=MODERATE_STATUSES.APPROVED, post__id=self.kwargs.get(self.lookup_url_kwarg))
+        post_id = self.kwargs.get(self.lookup_url_kwarg)
+        queryset = PostComment.objects.none()
+    
+        if post_id:
+            queryset = PostComment.objects.filter(
+                post__draft__moderate_status=MODERATE_STATUSES.APPROVED, post__id=post_id)
 
         return pipe(queryset, self.query_filter.filter_by_fields(
             request=self.request), self.sort.sort_by_fields(request=self.request))
@@ -131,7 +137,8 @@ class PostCommentView(mixins.DestroyModelMixin,
     def create(self, request, post_id):
         if len(self.get_queryset()) == 0:
             return Response({'detail': 'post not found'}, status=status.HTTP_400_BAD_REQUEST)
-        serializer = CreateCommentSerializer(data=request.data, context={'request': request, 'post_id': post_id})
+        serializer = CreateCommentSerializer(data=request.data, context={
+                                             'request': request, 'post_id': post_id})
         serializer.is_valid(raise_exception=True)
         instance = serializer.save()
 

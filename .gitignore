@@ -6,3 +6,4 @@ media/
 .env.local
 .env.stage
 .env.prod
+client/

@@ -36,6 +36,8 @@ class BaseConfiguration(Configuration):
         "allauth.socialaccount",
         "allauth.socialaccount.providers.google",
 
+        "drf_yasg",
+
         "dj_rest_auth",
         "dj_rest_auth.registration",
 
@@ -145,7 +147,7 @@ class BaseConfiguration(Configuration):
     REFRESH_TOKEN_LIFETIME = int(os.environ.get('ACCESS_TOKEN_LIFETIME', '7'))
 
     SIMPLE_JWT = {
-        'ACCESS_TOKEN_LIFETIME': timedelta(minutes=ACCESS_TOKEN_LIFETIME),
+        'ACCESS_TOKEN_LIFETIME': timedelta(days=ACCESS_TOKEN_LIFETIME),
         'REFRESH_TOKEN_LIFETIME': timedelta(days=REFRESH_TOKEN_LIFETIME),
         'ROTATE_REFRESH_TOKENS': True,
         'BLACKLIST_AFTER_ROTATION': True,
@@ -161,7 +163,9 @@ class BaseConfiguration(Configuration):
             'dj_rest_auth.jwt_auth.JWTCookieAuthentication',
         ),
         'DEFAULT_PERMISSION_CLASSES': (
-            'rest_framework.permissions.IsAuthenticated', )
+            'rest_framework.permissions.IsAuthenticated', ),
+        'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+        'PAGE_SIZE': 50,
     }
 
 
@@ -171,7 +175,7 @@ class EnvConfig(BaseConfiguration):
     else:
         DEBUG = False
     CORS_ORIGIN_ALLOW_ALL = DEBUG
-    GOOGLE_REDIRECT_URI = os.getenv('GOOGLE_REDIRECT_URI', '')
+    GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', '')
     SECRET_KEY = os.environ.get("SECRET_KEY", "")
     DB_NAME = os.environ.get("DB_NAME", "")
     DB_USER = os.environ.get("DB_USER", "")

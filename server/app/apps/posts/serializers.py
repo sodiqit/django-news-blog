@@ -3,6 +3,7 @@ from typing import Dict, TypedDict
 from rest_framework import serializers
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework.request import Request
+from drf_yasg import openapi
 
 from app.apps.core.serializers import CategorySerializer, TagSerializer
 from app.apps.core.models import Author, Category, User
@@ -72,6 +73,35 @@ class PostSerializer(serializers.ModelSerializer):
         fields = ('id', 'title', 'author', 'categories', 'content',
                   'tags', 'created_date', 'preview', 'images')
 
+
+class CategoriesField(serializers.JSONField):
+    class Meta:
+        category_schema = openapi.Schema(title='Category', type=openapi.TYPE_OBJECT, properties={
+            "id": openapi.Schema(
+                title="Category id",
+                type=openapi.TYPE_STRING,
+            ),
+            "title": openapi.Schema(
+                title="Category title",
+                type=openapi.TYPE_STRING,
+            ),
+        })
+        swagger_schema_fields = {
+            "type": openapi.TYPE_ARRAY,
+            "title": "Categories",
+            "items": category_schema,
+        }
+
+
+class SwaggerPostSerializer(serializers.ModelSerializer):
+    images = PostImageSerializer(many=True)
+    categories = CategoriesField()
+    tags = TagSerializer(many=True)
+
+    class Meta:
+        model = Post
+        fields = ('id', 'title', 'author', 'categories', 'content',
+                  'tags', 'created_date', 'preview', 'images')
 
 class CreatePostSerializer(serializers.ModelSerializer):
     tags = IntegerListField()
@@ -182,3 +212,6 @@ class CreateCommentSerializer(serializers.Serializer):
 
         return instance
 
+
+class SwaggerPostDraftSerializer(PostDraftSerializer):
+    post = SwaggerPostSerializer()
